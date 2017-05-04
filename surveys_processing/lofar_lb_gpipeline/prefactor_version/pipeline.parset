@@ -9,23 +9,26 @@ pipeline.steps = [mk_results_dir, mk_calresults_dir, mk_inspect_dir, createmap_t
 
 # PARAMETER SETUP -- THINGS YOU WILL NEED TO CHANGE
 ## target data information
-! target_input_path              = /path/to/directory/containing/targetdata                         # directory where the unaveraged data including long baselines is stored
+! target_input_path              = /data/scratch/lb_bw/pipeline_test/targetdata                         # directory where the unaveraged data including long baselines is stored
 ! target_input_pattern           = L401323_SB*.MS
 ## solutions from previous pre-factor run on calibrator (numpy arrays)
-! transfer_amp_clock_sols_store  = /path/to/directory/containing/cal_results      # directory where the amplitude and clock solutions of prefactor are stored (*.npy files)
+! transfer_amp_clock_sols_store  = /data/scratch/lb_bw/prefactor_solutions/prefactor/cal_results/      # directory where the amplitude and clock solutions of prefactor are stored (*.npy files)
 ! amp_sols_basename              = caldata_transfer
 ## phase soutions from previous pre-factor run on target (phase solution parmdbs)
-! phase_sol_input_path           = /path/to/directory/containing/phase_sols                         # directory where the direction-independent phase solutions of the target field are stored
-! phase_sol_input_pattern        = L401323*phase.table
+! phase_sol_input_path           = /data/scratch/lb_bw/prefactor_solutions/prefactor/results/                        # directory where the direction-independent phase solutions of the target field are stored
+! phase_sol_input_pattern        = L401323*phase_table
 
 ! manual_targets                 = True                                                     # Set to true if you want to specify a target list manually, otherwise targets selected using LOBOS                        
-! manual_target_file             = /path/to/directory/containing/lbcs_manual_target_list.txt          # only used if manual targets set to true
+! manual_target_file             = /data/scratch/lb_bw/pipeline_test/lbcs_manual_target_list.txt          # only used if manual targets set to true
 # this is the target catalogue of directions to image; if it doesn't exist, it will be downloaded from the LoTSS database
-! target_catalogue      	 = /path/to/file/PleaseProvideCatalogue.csv
+! target_catalogue      	 = /data/scratch/lb_bw/pipeline_test/lotss_catalogue.csv
 ! use_target_catalogue      	 = True 							# "Force" : always download , "True" download if {{ target_skymodel }} does not exist , "False" : never download
 
+# job directory should match cfg file
+! job_directory			 = /data/scratch/lb_bw/pipeline_test/pipeline/
+
 # output directories
-! results_directory    		 = /path/to/directory/WhereYouWantYourProcessedData/
+! results_directory    		 = /data/scratch/lb_bw/pipeline_test/results/
 ! calibrator_results_directory   = {{ results_directory }}/calibrators/
 ! inspection_directory		 = {{ results_directory }}/inspection/
 
@@ -48,14 +51,14 @@ pipeline.steps = [mk_results_dir, mk_calresults_dir, mk_inspect_dir, createmap_t
 ! error_tolerance                = False                                 		      # set to true if you want the pipeline run to continue if single bands fail
 
 ## scripts used in this parset (update paths)
-! transfer_amp_clock_sols_script = /lofar-lb/surveys_processing/lofar_lb_gpipeline/prefactor_version/bin/transfer_amplitudes+clock+offset_toMS.py
-! update_ISgains_script		 = /lofar-lb/surveys_processing/lofar_lb_gpipeline/prefactor_version/bin/updateISGains.py
-! add_IS_script			 = /lofar-lb/surveys_processing/lofar_lb_gpipeline/prefactor_version/bin/addInternationalStations.py
-! execute_circ_conv_script	 = /lofar-lb/surveys_processing/lofar_lb_gpipeline/prefactor_version/bin/execute_circ_pol_conv.py
-! lin2circ_script		 = /lofar-lb/surveys_processing/lofar_lb_gpipeline/prefactor_version/bin/lin2circ.py
-! closure_phase_script	 	 = /lofar-lb/surveys_processing/lofar_lb_gpipeline/prefactor_version/bin/closure_v2.py
-! download_lotss_script		 = /lofar-lb/surveys_processing/lofar_lb_gpipeline/prefactor_version/bin/download_lotss_catalogue.py
-! self_cal_and_imaging_script	 = /lofar-lb/surveys_processing/lofar_lb_gpipeline/prefactor_version/bin/self_calibration_and_imaging.py
+! transfer_amp_clock_sols_script = /data/scratch/lb_bw/pipeline_test/lofar-lb/surveys_processing/lofar_lb_gpipeline/prefactor_version/bin/transfer_amplitudes+clock+offset_toMS.py
+! update_ISgains_script		 = /data/scratch/lb_bw/pipeline_test/lofar-lb/surveys_processing/lofar_lb_gpipeline/prefactor_version/bin/updateISGains.py
+! add_IS_script			 = /data/scratch/lb_bw/pipeline_test/lofar-lb/surveys_processing/lofar_lb_gpipeline/prefactor_version/bin/addInternationalStations.py
+! execute_circ_conv_script	 = /data/scratch/lb_bw/pipeline_test/lofar-lb/surveys_processing/lofar_lb_gpipeline/prefactor_version/bin/execute_circ_pol_conv.py
+! lin2circ_script		 = /data/scratch/lb_bw/pipeline_test/lofar-lb/surveys_processing/lofar_lb_gpipeline/prefactor_version/bin/lin2circ.py
+! closure_phase_script	 	 = /data/scratch/lb_bw/pipeline_test/lofar-lb/surveys_processing/lofar_lb_gpipeline/prefactor_version/bin/closure_v2.py
+! download_lotss_script		 = /data/scratch/lb_bw/pipeline_test/lofar-lb/surveys_processing/lofar_lb_gpipeline/prefactor_version/bin/download_lotss_catalogue.py
+! self_cal_and_imaging_script	 = /data/scratch/lb_bw/pipeline_test/lofar-lb/surveys_processing/lofar_lb_gpipeline/prefactor_version/bin/self_calibration_and_imaging.py
 
 #####################################################################################################################################################################
 #
@@ -224,7 +227,7 @@ ndppp_apply_cal.argument.applytheBeam.beammode       =   default
 #
 #####################################################################################################################################################################
 
-get_calibrator_directions
+#get_calibrator_directions
 
 # Loop through the target phase calibrator canditates
 
@@ -242,7 +245,7 @@ prep_dirs.control.infile                  =   ndppp_prep_target.output.mapfile
 prep_dirs.control.filename                =   prep_dirs.mapfile
 prep_dirs.control.wd                      =   {{ job_directory }}
 prep_dirs.control.nP                      =   3	# default was three
-prep_dirs.control.counter                 =   main_loop.output.counter
+prep_dirs.control.counter                 =   calibrator_loop.output.counter
 prep_dirs.control.manual                  =   {{ manual_targets }}  ##  get_calibrator_directions
 prep_dirs.control.target_file             =   {{ manual_target_file }} ## get_calibrator_directions
 
@@ -416,7 +419,7 @@ prep_dirs_img.control.infile                  =   ndppp_prep_target.output.mapfi
 prep_dirs_img.control.filename                =   prep_dirs_img.mapfile
 prep_dirs_img.control.wd                      =   {{ job_directory }}
 prep_dirs_img.control.nP                      =   3 # default was three
-prep_dirs_img.control.counter                 =   main_loop.output.counter
+prep_dirs_img.control.counter                 =   calibrator_loop.output.counter
 prep_dirs_img.control.target_file             =   {{ target_catalogue }}   ###
 
 # shift, average and add up stations for tied array
