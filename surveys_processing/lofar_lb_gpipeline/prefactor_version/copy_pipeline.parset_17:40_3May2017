@@ -4,58 +4,50 @@
 # Please read the instructions and report bugs on: https://github.com/varenius/lofar-lb/tree/master/surveys_processing/lofar_lb_gpipeline
 
 # These are the steps to run.
-#pipeline.steps = [mk_results_dir, mk_calresults_dir, mk_inspect_dir, createmap_target , ndppp_prep_target , transfer_amp_clock_sols, is_amp_gains, createmap_ps, copy_sols, createmap_pstwo, match_files, is_add_phase, ndppp_apply_cal, calibrator_loop, createmap_plots, mv_closure_phase_png, createmap_fits, mv_fits, get_imaging_catalogue, imaging_loop ]
-pipeline.steps = [mk_results_dir, mk_calresults_dir, mk_inspect_dir, createmap_target , ndppp_prep_target , transfer_amp_clock_sols, is_amp_gains, createmap_ps, copy_sols, createmap_pstwo, match_files, is_add_phase, ndppp_apply_cal, calibrator_loop, createmap_plots, mv_closure_phase_png, get_imaging_catalogue, imaging_loop ]
+pipeline.steps = [createmap_target , ndppp_prep_target , transfer_amp_clock_sols, is_amp_gains, createmap_ps, copy_sols, createmap_pstwo, match_files, is_add_phase, ndppp_apply_cal, calibrator_loop, get_imaging_catalogue, imaging_loop ]
 
-# PARAMETER SETUP -- THINGS YOU WILL NEED TO CHANGE
-## target data information
-! target_input_path              = /path/to/directory/containing/targetdata                         # directory where the unaveraged data including long baselines is stored
-! target_input_pattern           = L401323_SB*.MS
-## solutions from previous pre-factor run on calibrator (numpy arrays)
-! transfer_amp_clock_sols_store  = /path/to/directory/containing/cal_results      # directory where the amplitude and clock solutions of prefactor are stored (*.npy files)
-! amp_sols_basename              = caldata_transfer
-## phase soutions from previous pre-factor run on target (phase solution parmdbs)
-! phase_sol_input_path           = /path/to/directory/containing/phase_sols                         # directory where the direction-independent phase solutions of the target field are stored
-! phase_sol_input_pattern        = L401323*phase.table
+# Parameter setup -- main directories
+! target_input_path              =   /data/scratch/drabent/targetdata                         # directory where the unaveraged data including long baselines is stored
+! phase_sol_input_path           =   /data/scratch/drabent/phase_sols                         # directory where the direction-independent phase solutions of the target field are stored
+! transfer_amp_clock_sols_store  =   /data/scratch/lb_bw/prefactor_solutions/cal_results      # directory where the amplitude and clock solutions of prefactor are stored (*.npy files)
+! working_directory              =   input.output.working_directory                           # internal directory, you probably don't need to adjust
+! job_directory                  =   input.output.job_directory                               # internal directory, you probably don't need to adjust
+! pipeline_directory             =   /data/scratch/drabent/lofar_lb_gpipeline                 # directory where you have stored the pipeline (scripts, plugins, etc.)
+! lofar_directory                =   $LOFARROOT                                               # directory of your LOFAR installation. Should be the same as in pipeline.cfg.
 
-! manual_targets                 = True                                                     # Set to true if you want to specify a target list manually, otherwise targets selected using LOBOS                        
-! manual_target_file             = /path/to/directory/containing/lbcs_manual_target_list.txt          # only used if manual targets set to true
+# Parameter setup -- subdirectories
+pipeline.pluginpath              =   {{ pipeline_directory }}/plugins                         # internal directory, you probably don't need to adjust
+! scripts                        =   {{ pipeline_directory }}/bin                             # internal directory, you probably don't need to adjust
+
+### Parameter setup -- variables
+! shift_avg_timestep             =   8                                                        # averaging time step after shifting and phase up. Make sure this is a sensible value!
+! shift_avg_freqstep             =   4                                                        # averaging freq step after shifting and phase up
+! phaseup_command                =   {ST001:'CS*'}                                            # core stations or superterp?
+! filter_command                 =   '!CS*&*'                                                 # remove unwanted stations
+! closure_phase_stations         =   'DE601;DE605;ST001'                                      # list of stations used to derive closure phases, separated by ;
+! target_input_pattern           =   L401323_SB*.MS
+! phase_sol_input_pattern        =   L401323*phase.table
+! num_SBs_per_group              =   244                                                      # should be the same as for prefactor run! This is also the number of SBs per AIPS IF. Make sure it's a sensible number.
+! amp_sols_basename              =   caldata_transfer                                         # should be the same as for prefactor run!
+! max_per_node                   =   input.output.max_per_node
+
+! manual_targets                 =   True                                                     # Set to true if you want to specify a target list manually, otherwise targets selected using LOBOS                        
+! manual_target_file             =   /data/scratch/lb_bw/lbcs_manual_target_list.txt          # only used if manual targets set to true
+
 # this is the target catalogue of directions to image; if it doesn't exist, it will be downloaded from the LoTSS database
-! target_catalogue      	 = /path/to/file/PleaseProvideCatalogue.csv
-! use_target_catalogue      	 = True 							# "Force" : always download , "True" download if {{ target_skymodel }} does not exist , "False" : never download
+! target_catalogue      = /my/fake/path/PleaseProvideCatalogue.csv
+# "Force" : always download , "True" download if {{ target_skymodel }} does not exist , "False" : never download
+! use_lotss_target      = True
 
-# output directories
-! results_directory    		 = /path/to/directory/WhereYouWantYourProcessedData/
-! calibrator_results_directory   = {{ results_directory }}/calibrators/
-! inspection_directory		 = {{ results_directory }}/inspection/
 
-## VARIABLES TO CHANGE
-## averaging parameters
-! cal_shift_avg_timestep         = 8         						      # averaging time step for calibrator: output should be 8 seconds
-! cal_shift_avg_freqstep         = 8         						      # averaging freq step for calibrator: output should be 2 channels per subband
-! tgt_shift_avg_timestep         = 16        						      # averaging time step for calibrator: output should be 16 seconds
-! tgt_shift_avg_freqstep         = 16        						      # averaging freq step for calibrator: output should be 1 channel per subband
-## which stations to phase up
-! phaseup_command                = {ST001:'CS*'}                                            # all core stations or superterp
-! filter_command                 = '!CS*&*'                                                 # remove unwanted stations
-## stations to use for closure phase
-! closure_phase_stations         = 'DE601;DE605;ST001'                                      # list of stations used to derive closure phases, separated by ;
+# number of processes to use per step per node
+! num_proc_per_node        = 24
+# number of processes to use per step per node for tasks with high i/o (dppp or cp) or memory (eg calibration)
+! num_proc_per_node_limit  = 4
+# number of threads per process for NDPPP
+! max_dppp_threads         = 8
 
-## GENERAL PIPELINE SETUP (you probably only need to change these if your cluster is very different from CEP3)
-! num_proc_per_node        	 = 24							      # number of processes to use per step per node
-! num_proc_per_node_limit  	 = 4							      # number of processes to use per step per node for tasks with high i/o (dppp or cp) or memory (eg calibration)
-! max_dppp_threads         	 = 8							      # number of threads per process for NDPPP
-! error_tolerance                = False                                 		      # set to true if you want the pipeline run to continue if single bands fail
-
-## scripts used in this parset (update paths)
-! transfer_amp_clock_sols_script = /lofar-lb/surveys_processing/lofar_lb_gpipeline/prefactor_version/bin/transfer_amplitudes+clock+offset_toMS.py
-! update_ISgains_script		 = /lofar-lb/surveys_processing/lofar_lb_gpipeline/prefactor_version/bin/updateISGains.py
-! add_IS_script			 = /lofar-lb/surveys_processing/lofar_lb_gpipeline/prefactor_version/bin/addInternationalStations.py
-! execute_circ_conv_script	 = /lofar-lb/surveys_processing/lofar_lb_gpipeline/prefactor_version/bin/execute_circ_pol_conv.py
-! lin2circ_script		 = /lofar-lb/surveys_processing/lofar_lb_gpipeline/prefactor_version/bin/lin2circ.py
-! closure_phase_script	 	 = /lofar-lb/surveys_processing/lofar_lb_gpipeline/prefactor_version/bin/closure_v2.py
-! download_lotss_script		 = /lofar-lb/surveys_processing/lofar_lb_gpipeline/prefactor_version/bin/download_lotss_catalogue.py
-! self_cal_and_imaging_script	 = /lofar-lb/surveys_processing/lofar_lb_gpipeline/prefactor_version/bin/self_calibration_and_imaging.py
+! error_tolerance                =   False                                                    # set this to True if you want the pipeline run to continue if single bands fail
 
 #####################################################################################################################################################################
 #
@@ -65,21 +57,6 @@ pipeline.steps = [mk_results_dir, mk_calresults_dir, mk_inspect_dir, createmap_t
 #
 #
 #####################################################################################################################################################################
-
-# create the results directory if needed
-mk_results_dir.control.kind               =  plugin
-mk_results_dir.control.type               =  makeDirectory
-mk_results_dir.control.directory          =  {{ results_directory }}
-
-# create the calibrator results directory
-mk_calresults_dir.control.kind		  =  plugin
-mk_calresults_dir.control.type		  =  makeDirectory
-mk_calresults_dir.control.directory	  =  {{ calibrator_results_directory }}
-
-# create the inspection_directory if needed
-mk_inspect_dir.control.kind               =  plugin
-mk_inspect_dir.control.type               =  makeDirectory
-mk_inspect_dir.control.directory          =  {{ inspection_directory }}
 
 # generate a mapfile of all the target data
 createmap_target.control.kind                     =   plugin
@@ -119,7 +96,7 @@ ndppp_prep_target.argument.doflagging.strategy    =   {{ lofar_directory }}/shar
 
 # transfer solutions to MSs
 transfer_amp_clock_sols.control.type                 =   pythonplugin  
-transfer_amp_clock_sols.control.executable           =   {{ transfer_amp_clock_sols_script }}
+transfer_amp_clock_sols.control.executable           =   {{ scripts }}/transfer_amplitudes+clock+offset_toMS.py
 transfer_amp_clock_sols.argument.msname              =   ndppp_prep_target.output.mapfile
 transfer_amp_clock_sols.argument.npdir               =   {{ transfer_amp_clock_sols_store }}
 transfer_amp_clock_sols.store_basename               =   {{ amp_sols_basename }}
@@ -127,7 +104,7 @@ transfer_amp_clock_sols.argument.output              =   outputkey
 
 # scale international amps of table
 is_amp_gains.control.type                            =   pythonplugin  
-is_amp_gains.control.executable                      =   {{ update_ISgains_script }}
+is_amp_gains.control.executable                      =   {{ scripts }}/updateISGains.py
 is_amp_gains.argument.flags                          =   [ transfer_amp_clock_sols.output.mapfile ]
 
 # create a mapfile of the phase solution measurement sets
@@ -177,7 +154,7 @@ match_files.control.mapfile_ms                       =   ndppp_prep_target.outpu
 
 # add international stations to phase solutions
 is_add_phase.control.type                            =   pythonplugin  
-is_add_phase.control.executable                      =   {{ add_IS_script }}
+is_add_phase.control.executable                      =   {{ scripts }}/addInternationalStations.py
 is_add_phase.control.mapfile_in                      =   match_files.output.tables
 is_add_phase.control.inputkey                        =   tables
 is_add_phase.argument.flags                          =   [ tables , match_files.output.mapfile ]
@@ -231,7 +208,7 @@ get_calibrator_directions
 calibrator_loop.control.kind                    =   loop
 calibrator_loop.control.type                    =   conditional
 calibrator_loop.control.loopcount               =   100
-calibrator_loop.control.loopsteps               =   [ prep_dirs, dppp_phaseup, make_circ, make_concatmap, dppp_concat, closure_phase, run_self_cal, make_cal_results_mapfile, move_cal_results ] 
+calibrator_loop.control.loopsteps               =   [ prep_dirs, dppp_phaseup, make_circ, make_concatmap, dppp_concat, closure_phase ] 
 ## steps still to add: conditional on scatter, do: run model_engine, diagonal gain, clock/tec separation, self-calibration
 
 # Initialise file with all directions
@@ -258,8 +235,8 @@ dppp_phaseup.argument.steps               =   [shift, avg, adder, filter]
 dppp_phaseup.argument.shift.type          =   phaseshift
 dppp_phaseup.argument.shift.phasecenter   =   prep_dirs.output.cords
 dppp_phaseup.argument.avg.type            =   squash
-dppp_phaseup.argument.avg.freqstep        =   {{ cal_shift_avg_freqstep }}
-dppp_phaseup.argument.avg.timestep        =   {{ cal_shift_avg_timestep }}
+dppp_phaseup.argument.avg.freqstep        =   {{ shift_avg_freqstep }}
+dppp_phaseup.argument.avg.timestep        =   {{ shift_avg_timestep }}
 dppp_phaseup.argument.adder.type          =   stationadder
 dppp_phaseup.argument.adder.stations      =   {{ phaseup_command }}
 dppp_phaseup.argument.filter.type         =   filter
@@ -269,9 +246,9 @@ dppp_phaseup.argument.numthreads	  =   {{ max_dppp_threads }}  ## this supersede
 
 # Convert to circular polarisation (in place)
 make_circ.control.type                    =   pythonplugin  
-make_circ.control.executable              =   {{ execute_circ_conv_script }}
+make_circ.control.executable              =   {{ scripts }}/execute_circ_pol_conv.py
 make_circ.argument.flags                  =   [ dppp_phaseup.output.mapfile ]
-make_circ.argument.cpath                  =   {{ lin2circ_script }}
+make_circ.argument.cpath                  =   {{ scripts }}/lin2circ.py
 make_circ.argument.mode                   =   lin2circ
 
 # get a list of all subbands
@@ -295,82 +272,11 @@ dppp_concat.argument.numthreads           =   {{ max_dppp_threads }}  ## this su
 
 # derive the closure phase
 closure_phase.control.type                =   pythonplugin
-closure_phase.control.executable          =   {{ closure_phase_script }}
+closure_phase.control.executable          =   {{ scripts }}/closure_v2.py
 closure_phase.argument.flags              =   [dppp_concat.output.mapfile, {{ closure_phase_stations }}]
 
-#run_self_cal.control.type		  =   pythonplugin
-#run_self_cal.control.executable           =   {{ self_cal_and_imaging_script }}
-#run_self_cal.argument.flags		  =   [ dppp_concat.output.mapfile ]
-#run_self_cal.argument.freq_range	  =   20
-
-
-# make mapfile with the filenames of the results that we want
-make_cal_results_mapfile.control.kind            =  plugin
-make_cal_results_mapfile.control.type            =  makeResultsMapfile
-make_cal_results_mapfile.control.mapfile_dir     =  input.output.mapfile_dir
-make_cal_results_mapfile.control.filename        =  make_results_mapfile.mapfile
-make_cal_results_mapfile.control.mapfile_in      =  dppp_concat.output.mapfile
-make_cal_results_mapfile.control.target_dir      =  {{ calibrator_results_directory }}
-make_cal_results_mapfile.control.make_target_dir =  True
-
-# move the final measurement set to the calibrator results directory
-move_cal_results.control.kind               =  recipe
-move_cal_results.control.type               =  executable_args
-move_cal_results.control.executable         =  /bin/mv
-move_cal_results.control.max_per_node       =  {{ num_proc_per_node_limit }}
-move_cal_results.control.mapfiles_in        =  [dppp_concat.output.mapfile,make_results_mapfile.output.mapfile]
-move_cal_results.control.inputkeys          =  [source,destination]
-move_cal_results.control.arguments          =  [source,destination]
-
-
-#####################################################################################################################################################################
-#
-#
-#       HOUSEKEEPING AFTER CALIBRATOR SELF-CAL LOOP
-#
-#
-#####################################################################################################################################################################
-
-
-# get a list of the inspection plots
-createmap_plots.control.kind            =   plugin
-createmap_plots.control.type            =   createMapfile
-createmap_plots.control.method          =   mapfile_from_folder
-createmap_plots.control.mapfile_dir     =   input.output.mapfile_dir
-createmap_plots.control.filename        =   createmap_plots.mapfile
-createmap_plots.control.folder          =   input.output.working_directory/input.output.job_name
-createmap_plots.control.pattern         =   *.png
-
-# move the inspection plots
-mv_closure_phase_png.kind		  =   recipe
-mv_closure_phase_png.type		  =   executable_args
-mv_closure_phase_png.control.executable	  =   /bin/mv
-mv_closure_phase_png.control.max_per_node =   {{ num_proc_per_node }}
-mv_closure_phase_png.control.mapfile_in   =   createmap_plots.output.mapfile
-mv_closure_phase_png.control.inputkey	  =   source
-mv_closure_phase_png.control.arguments     =   [source,{{ inspection_directory }}]
-
-# get a list of final images
-createmap_fits.control.kind            =   plugin
-createmap_fits.control.type            =   createMapfile
-createmap_fits.control.method          =   mapfile_from_folder
-createmap_fits.control.mapfile_dir     =   input.output.mapfile_dir
-createmap_fits.control.filename        =   createmap_fits.mapfile
-createmap_fits.control.folder          =   input.output.working_directory/input.output.job_name
-createmap_fits.control.pattern         =   *.fits
-
-# move to the calibrator results directory
-mv_fits.kind                	       	=   recipe
-mv_fits.type                 	       	=   executable_args
-mv_fits.control.executable   		=   /bin/mv
-mv_fits.control.max_per_node 		=   {{ num_proc_per_node }}
-mv_fits.control.mapfile_in   		=   createmap_fits.output.mapfile
-mv_fits.control.inputkey     		=   source
-mv_fits.control.arguments     		=   [source,{{ calibrator_results_directory }}]
-
-
-#find_best_closure_phase_solutions
-#run_model_engine_script_and_self_cal
+find_best_closure_phase_solutions
+run_model_engine_script_and_self_cal
 
 #####################################################################################################################################################################
 #
@@ -380,8 +286,8 @@ mv_fits.control.arguments     		=   [source,{{ calibrator_results_directory }}]
 #
 #####################################################################################################################################################################
 
-#find_best_solutions
-#apply_to_data
+find_best_solutions
+apply_to_data
 
 #####################################################################################################################################################################
 #
@@ -393,9 +299,9 @@ mv_fits.control.arguments     		=   [source,{{ calibrator_results_directory }}]
 
 # access lotss to provide a catalogue of sources to use
 get_imaging_catalogue.control.type	   = pythonplugin
-get_imaging_catalogue.executable  	   = {{ download_lotss_script }}
+get_imaging_catalogue.executable  	   = {{ scripts }}/download_lotss_skymodel.py
 get_imaging_catalogue.flags 		   = [ndppp_prep_target.output.mapfile]
-get_imaging_catalogue.DoDownload	   = {{ use_target_catalogue }}
+get_imaging_catalogue.DoDownload	   = {{ use_lotss_target }}
 get_imaging_catalogue.SkymodelPath	   = {{ target_catalogue }}
 get_imaging_catalogue.Radius		   = 1.5
 
@@ -404,8 +310,7 @@ get_imaging_catalogue.Radius		   = 1.5
 imaging_loop.control.kind                    =   loop
 imaging_loop.control.type                    =   conditional
 imaging_loop.control.loopcount               =   100
-#imaging_loop.control.loopsteps               =   [prep_dirs_img, dppp_phaseup_img, make_circ_img, make_concatmap_img, dppp_concat_img, run_imaging ]
-imaging_loop.control.loopsteps               =   [prep_dirs_img, dppp_phaseup_img, make_circ_img, make_concatmap_img, dppp_concat_img ]
+imaging_loop.control.loopsteps               =   [prep_dirs_img, dppp_phaseup_img, make_circ_img, make_concatmap_img, dppp_concat_img, run_imaging ]
 ## steps still to add: find phase solutions from nearest calibrator and copy them, run self-calibration sript (but only to image)
 
 # Initialise file with all directions
@@ -431,8 +336,8 @@ dppp_phaseup_img.argument.steps               =   [shift, avg, adder, filter]
 dppp_phaseup_img.argument.shift.type          =   phaseshift
 dppp_phaseup_img.argument.shift.phasecenter   =   prep_dirs_img.output.cords
 dppp_phaseup_img.argument.avg.type            =   squash
-dppp_phaseup_img.argument.avg.freqstep        =   {{ tgt_shift_avg_freqstep }}
-dppp_phaseup_img.argument.avg.timestep        =   {{ tgt_shift_avg_timestep }}
+dppp_phaseup_img.argument.avg.freqstep        =   {{ shift_avg_freqstep }}
+dppp_phaseup_img.argument.avg.timestep        =   {{ shift_avg_timestep }}
 dppp_phaseup_img.argument.adder.type          =   stationadder
 dppp_phaseup_img.argument.adder.stations      =   {{ phaseup_command }}
 dppp_phaseup_img.argument.filter.type         =   filter
@@ -442,9 +347,9 @@ dppp_phaseup_img.argument.numthreads          =   {{ max_dppp_threads }}  ## thi
 
 # Convert to circular polarisation (in place)
 make_circ_img.control.type                    =   pythonplugin
-make_circ_img.control.executable              =   {{ execute_circ_conv_script }}
+make_circ_img.control.executable              =   {{ scripts }}/execute_circ_pol_conv.py
 make_circ_img.argument.flags                  =   [ dppp_phaseup_img.output.mapfile ]
-make_circ_img.argument.cpath                  =   {{ lin2circ_script }}
+make_circ_img.argument.cpath                  =   {{ scripts }}/lin2circ.py
 make_circ_img.argument.mode                   =   lin2circ
 
 # get a list of all subbands
@@ -466,27 +371,13 @@ dppp_concat_img.argument.msout.datacolumn     =   DATA
 dppp_concat_img.argument.steps                =   []
 dppp_concat_img.argument.numthreads           =   {{ max_dppp_threads }}  ## this supersedes the control.environment
 
-#run_imaging.control.type 		      =   pythonplugin
-#run_imaging.control.executable		      =   {{ self_cal_and_imaging_script }}
+run_imaging.control.type 		      =   pythonplugin
+run_imaging.control.executable		      =   {{ scripts }}/self_calibration_and_imaging.py
 
-# make mapfile with the filenames of the results that we want
-#make_results_mapfile.control.kind            =  plugin
-#make_results_mapfile.control.type            =  makeResultsMapfile
-#make_results_mapfile.control.mapfile_dir     =  input.output.mapfile_dir
-#make_results_mapfile.control.filename        =  make_results_mapfile.mapfile
-#make_results_mapfile.control.mapfile_in      =  check_unflagged_map.output.mapfile
-#make_results_mapfile.control.target_dir      =  {{ results_directory }}
-#make_results_mapfile.control.make_target_dir =  True
-#make_results_mapfile.control.new_suffix      =  .pre-cal.ms
 
-# move the results to where we want them
-#mv_results.control.kind               =  recipe
-#mv_results.control.type               =  executable_args
-#mv_results.control.executable         =  /bin/mv
-#mv_results.control.max_per_node       =  {{ num_proc_per_node_limit }}
-#mv_results.control.mapfiles_in        =  [check_unflagged_map.output.mapfile,make_results_mapfile.output.mapfile]
-#mv_results.control.inputkeys          =  [source,destination]
-#mv_results.control.arguments          =  [source,destination]
+make_circ_img.argument.flags                  =   [ dppp_phaseup_img.output.mapfile ]
+make_circ_img.argument.cpath                  =   {{ scripts }}/lin2circ.py
+make_circ_img.argument.mode                   =   lin2circ
 
 
 

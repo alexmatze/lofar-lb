@@ -12,6 +12,7 @@ from astropy.coordinates import SkyCoord
 # used in locapi generic pipeline implementation
 # Alexander Drabent, January 2017
 # added more functionality 
+# Leah Morabito May 2017 updated to skip header line in manual target file if it exists
 
 
 def plugin_main(args, **kwargs):
@@ -74,8 +75,9 @@ def plugin_main(args, **kwargs):
         if manual:
             with open(target_file, 'r') as f:			# if the user has provided a list of targets, use it: otherwise use Lobos to find good targets
                 for line in f:
-                   coords = (line.rstrip('\n')).split(',')
-                   map_out_big.data.append(DataProduct( '[\"'+coords[0]+'\",\"'+coords[1]+'\"]' , coords[2], False ))
+		   if 'RA' not in line:
+                      coords = (line.rstrip('\n')).split(',')
+                      map_out_big.data.append(DataProduct( '[\"'+coords[0]+'\",\"'+coords[1]+'\"]' , coords[2], False ))
 
         else:
             infile = ((DataMap.load(infile_map))[0]).file	# get the actual filename from the map provided

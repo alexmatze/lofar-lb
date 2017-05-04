@@ -14,6 +14,7 @@ from lofarpipe.support.data_map import DataProduct
 # and about 1.00 for reasonably strong sources.
 # modified to work with the genericpipeline version of the Long Baseline pipeline
 # Alexander Drabent, 2017 Jan 12
+# modified to select only 2 MHz of bandwidth if the file is larger
 
 def closure(vis, tel, lastv=-1):
     # Find target source id
@@ -35,8 +36,31 @@ def closure(vis, tel, lastv=-1):
     if -1 in idx_tels:
         print 'Did not find one or more of the telescopes'
         exit()
+
+    # get the bandwidth
+    command = 'taql \'select TOTAL_BANDWIDTH from %s/SPECTRAL_WINDOW\' >total_bandwidth'%vis
+    os.system(command)
+    with open('total_bandwidth') as f:
+	lines = f.readlines()
+    f.close()
+    os.system('rm total_bandwidth')
+    bandwidth = np.float(lines[-1].rstrip('\n'))
+    if bandwidth > 2e6:
+	# get channel width
+        command = 'taql \'select CHAN_WIDTH from %s/SPECTRAL_WINDOW\' >chan_width'%vis
+	os.system(command)
+        with open('chan_width') as f:
+            lines = f.readlines()
+        f.close()
+        os.system('rm chan_width')
+        chan_width = np.float(lines[-1].split(',')[0].strip('['))
+	if chan_width < 195312:
+	    nchans = np.ceiling(195312/chan_width)
+        else:
+	    nchans = 1
+
+
     # Make three reference MSs with pointers
-    
     os.system('rm -fr closure_temp*.ms')
     command = 'taql \'select from %s where ANTENNA1==%d and ANTENNA2==%d giving closure_temp1.ms\'' %(vis,idx_tels[0],idx_tels[1])
     os.system(command)
@@ -65,13 +89,13 @@ def closure(vis, tel, lastv=-1):
     plt.savefig('closure_out_%s.png' % target_id)
     return np.mean(np.gradient(cp)**2)
 
-def get_amp_clph(d1,d2,d3,spw,nspw=0,pol=0):
+def get_amp_clph(d1,d2,d3,spw,nspw=0,pol=0,nchans=1):
     a1,a2,a3,cp = np.array([]),np.array([]),np.array([]),np.array([])
     p1,p2,p3 = np.array([]),np.array([]),np.array([])
     for i in range(len(d1)):
         if spw[i].values()[0] != nspw:
             continue
-        vis1,vis2,vis3 = d1[i]['DATA'][:,pol],d2[i]['DATA'][:,pol],d3[i]['DATA'][:,pol]
+        vis1,vis2,vis3 = d1[i]['DATA'][0:1,pol],d2[i]['DATA'][0:1,pol],d3[i]['DATA'][0:1,pol]
         a1 = np.append(a1,abs(vis1).sum()/len(vis1))
         a2 = np.append(a2,abs(vis2).sum()/len(vis2))
         a3 = np.append(a3,abs(vis3).sum()/len(vis3))
